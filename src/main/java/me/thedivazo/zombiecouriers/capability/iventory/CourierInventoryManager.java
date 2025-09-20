@@ -14,15 +14,15 @@ import net.minecraftforge.event.AttachCapabilitiesEvent;
 import javax.annotation.Nonnull;
 
 public class CourierInventoryManager {
-    public static final String COURIER_INVENTORY_KEY = "courier_inventory";
+    public static final String KEY = "courier_inventory";
 
     @CapabilityInject(ICourierInventory.class)
     @Nonnull
     @SuppressWarnings("ConstantCondition")
-    public static Capability<ICourierInventory> COURIER_CAPABILITY = null;
+    public static Capability<ICourierInventory> CAPABILITY = null;
 
-    public static final ResourceLocation COURIER_CAPABILITY_NAME =
-            new ResourceLocation(ZombieCouriers.MOD_ID, COURIER_INVENTORY_KEY);
+    public static final ResourceLocation CAPABILITY_NAME =
+            new ResourceLocation(ZombieCouriers.MOD_ID, KEY);
 
     public static void registerCapabilities() {
         CapabilityManager.INSTANCE.register(
@@ -33,15 +33,14 @@ public class CourierInventoryManager {
     }
 
     public static void onEntityAttachCapabilities(@Nonnull final AttachCapabilitiesEvent<Entity> e) {
-        final Entity obj = e.getObject();
         final ICourierInventory capability = new CourierInventory();
         e.addCapability(
-                COURIER_CAPABILITY_NAME,
-                SimpleCapabilityProvider.from(COURIER_CAPABILITY, () -> capability)
+                CAPABILITY_NAME,
+                SimpleCapabilityProvider.from(CAPABILITY, () -> capability)
         );
     }
 
     public static LazyOptional<ICourierInventory> getCourierInventory(@Nonnull final Entity entity) {
-        return entity.getCapability(COURIER_CAPABILITY);
+        return entity.getCapability(CAPABILITY);
     }
 }

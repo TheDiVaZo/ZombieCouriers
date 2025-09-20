@@ -29,7 +29,7 @@ public class ZombieCouriers
     {
         CourierInventoryManager.registerCapabilities();
 
-        //MinecraftForge.EVENT_BUS.register(new ModEventHandler());
+        MinecraftForge.EVENT_BUS.register(new ModEventHandler());
         MinecraftForge.EVENT_BUS.register(new ForgeEventHandler());
     }
 

@@ -12,7 +12,7 @@ import java.util.EnumSet;
 
 public class FindVillageGoal extends Goal {
     private final MobEntity entity;
-    private final double distanceIsFound = 20;
+    private final double distanceIsFound = 30;
     private final double distanceIsFoundSqr = distanceIsFound * distanceIsFound;
     private final int searchDistanceChunk = 40;
     private final int scanCooldownTick = 40;
@@ -41,6 +41,10 @@ public class FindVillageGoal extends Goal {
 
         if (target != null && BlockPosFunction.distanceToSqr(entity, target) > distanceIsFoundSqr) {
             return true;
+        }
+        else if (target != null) {
+            isFounded = true;
+            return false;
         }
 
         target = BlockPosFunction.getNearbyVillage((ServerWorld) entity.level, entity.blockPosition(), searchDistanceChunk);

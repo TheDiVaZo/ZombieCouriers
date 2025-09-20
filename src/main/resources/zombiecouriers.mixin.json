@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "me.thedivazo.zombiecouriers.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "ZombieNoSunBurnMixin"
+  ],
+  "refmap": "zombiecouriers.mixin-refmap.json",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [],
+  "server": []
+}

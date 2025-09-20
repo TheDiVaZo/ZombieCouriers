@@ -47,6 +47,8 @@ versionRange="${forge_version_range}" #mandatory
 ordering="NONE"
 # Side this dependency is applied on - BOTH, CLIENT, or SERVER
 side="BOTH"
+mixinConfigs=["zombiecouriers.mixin.json"]
+mixins=["zombiecouriers.mixin.json"]
 # Here's another dependency
 [[dependencies.${mod_id}]]
 modId="minecraft"
@@ -55,4 +57,3 @@ mandatory=true
 versionRange="${minecraft_version_range}"
 ordering="NONE"
 side="BOTH"
-mixinConfigs="zombiecouriers.mixins.json"

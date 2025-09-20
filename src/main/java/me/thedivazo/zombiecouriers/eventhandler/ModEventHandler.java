@@ -20,7 +20,7 @@ public class ModEventHandler {
 
     private static final Class<? extends Goal>[] REMOVE_GOALS = new Class[]{
         ZombieAttackGoal.class,
-        //MoveThroughVillageGoal.class,
+        MoveThroughVillageGoal.class,
         HurtByTargetGoal.class,
         NearestAttackableTargetGoal.class,
         BreakBlockGoal.class
@@ -34,7 +34,7 @@ public class ModEventHandler {
         removeGoals(zombie.goalSelector);
         removeGoals(zombie.targetSelector);
 
-        zombie.goalSelector.addGoal(1, new FindVillageGoal(zombie));
+        zombie.goalSelector.addGoal(0, new FindVillageGoal(zombie));
 
         zombie.setAggressive(false);
         zombie.clearFire();

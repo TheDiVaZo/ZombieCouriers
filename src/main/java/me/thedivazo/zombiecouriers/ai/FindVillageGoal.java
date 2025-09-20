@@ -1,5 +1,6 @@
 package me.thedivazo.zombiecouriers.ai;
 
+import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.util.BlockPosFunction;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.ai.goal.Goal;
@@ -10,8 +11,7 @@ import org.apache.logging.log4j.LogManager;
 
 import java.util.EnumSet;
 
-public class FindVillageGoal extends Goal {
-    private final MobEntity entity;
+public class FindVillageGoal extends CourierStateGoal {
     private final double distanceIsFound = 30;
     private final double distanceIsFoundSqr = distanceIsFound * distanceIsFound;
     private final int searchDistanceChunk = 40;
@@ -21,16 +21,14 @@ public class FindVillageGoal extends Goal {
 
     private BlockPos target = null;
 
-    private boolean isFounded = false;
-
     public FindVillageGoal(MobEntity entity) {
-        this.entity = entity;
-        setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        super(entity, State.FIND_VILLAGE);
+        setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK, Flag.JUMP));
     }
 
     @Override
-    public boolean canUse() {
-        if (!entity.isAlive() || isFounded || !GroundPathHelper.hasGroundPathNavigation(entity)) return false;
+    public boolean isUse() {
+        if (!entity.isAlive() || !GroundPathHelper.hasGroundPathNavigation(entity)) return false;
 
         currentTickScan++;
         if (currentTickScan < scanCooldownTick) {
@@ -43,7 +41,7 @@ public class FindVillageGoal extends Goal {
             return true;
         }
         else if (target != null) {
-            isFounded = true;
+            setState(State.FIND_GARDEN_BED);
             return false;
         }
 
@@ -54,14 +52,14 @@ public class FindVillageGoal extends Goal {
 
     @Override
     public void start() {
-        if (target != null && entity.isAlive() && !isFounded) {
+        if (target != null && entity.isAlive()) {
             moveToTarget();
         }
     }
 
     @Override
-    public boolean canContinueToUse() {
-        if (target == null || !entity.isAlive() || isFounded) return false;
+    public boolean isContinueToUse() {
+        if (target == null || !entity.isAlive()) return false;
 
         double currentDistanceSqr = BlockPosFunction.distanceToSqr(entity, target);
         return currentDistanceSqr > distanceIsFoundSqr;
@@ -69,7 +67,7 @@ public class FindVillageGoal extends Goal {
 
     @Override
     public void tick() {
-        if (target == null && isFounded) return;
+        if (target == null) return;
 
         if (entity.getNavigation().isDone() || entity.getNavigation().getPath() == null) {
             moveToTarget();
@@ -81,7 +79,7 @@ public class FindVillageGoal extends Goal {
         if (target != null) {
             double distanceSqr = BlockPosFunction.distanceToSqr(entity, target);
             if (distanceSqr <= distanceIsFoundSqr) {
-                isFounded = true;
+                setState(State.FIND_GARDEN_BED);
             }
         }
     }

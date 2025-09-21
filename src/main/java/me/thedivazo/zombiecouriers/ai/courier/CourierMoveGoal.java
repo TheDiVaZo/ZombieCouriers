@@ -16,7 +16,7 @@ public abstract class CourierMoveGoal extends CourierStateGoal {
     @Getter
     private BlockPos target;
 
-    private final int recalculateTick = 20;
+    private final int recalculateTick = 15;
     private int currentRecalculateTick = 0;
 
     protected CourierMoveGoal(

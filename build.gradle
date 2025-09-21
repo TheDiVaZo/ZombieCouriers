@@ -129,6 +129,10 @@ dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
 
     compileOnly 'org.spongepowered:mixin:0.8.7'
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
+
+    // https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
 
     // Real mod deobf dependency examples - these get remapped to your current mappings
     // compileOnly fg.deobf("mezz.jei:jei-${mc_version}:${jei_version}:api") // Adds JEI API as a compile dependency

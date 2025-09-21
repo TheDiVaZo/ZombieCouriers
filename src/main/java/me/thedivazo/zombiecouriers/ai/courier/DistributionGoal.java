@@ -28,7 +28,6 @@ public class DistributionGoal extends CourierMoveGoal {
     private final int doorScanRadius = 7;
 
     private final Deque<BlockPos> nexts = new ArrayDeque<>();
-    private final Set<BlockPos> visited = new HashSet<>();
 
     public DistributionGoal(CreatureEntity entity, StateMachine stateMachine) {
         super(entity, stateMachine, State.DISTRIBUTION, 0.8d, 1d);
@@ -37,7 +36,6 @@ public class DistributionGoal extends CourierMoveGoal {
     @Override
     public void arrived() {
         BlockPos currentDoor = getTarget();
-        visited.add(currentDoor);
         ItemStack dropItemStack = CourierInventoryManager
                 .getCourierInventory(entity)
                 .map(ICourierInventory::pollOne)
@@ -50,26 +48,17 @@ public class DistributionGoal extends CourierMoveGoal {
         stateMachine.sendEvent(Event.DROP_CROP);
 
         setTarget(pollNearestUnvisitedDoor());
-        if (dropItemStack.isEmpty()) {
-            nextStage();
-        }
-        else if (CourierInventoryManager
+        if (CourierInventoryManager
                 .getCourierInventory(entity)
                 .map(inventory -> inventory.getCount() <= 0)
                 .orElse(true)
         ) {
             nextStage();
         }
-        if (nexts.isEmpty()) {
-            visited.clear();
-        }
     }
 
     private BlockPos pollNearestUnvisitedDoor() {
         if (nexts.isEmpty()) return null;
-        while (!nexts.isEmpty() && visited.contains(nexts.peek())) {
-            nexts.poll();
-        }
         return nexts.poll();
     }
 
@@ -123,9 +112,7 @@ public class DistributionGoal extends CourierMoveGoal {
             BlockPos door = findNearestDoorAround(serverWorld, home, doorScanRadius);
             if (door != null) {
                 BlockPos lower = ensureLowerHalf(serverWorld, door);
-                if (!visited.contains(lower)) {
-                    foundDoors.add(lower.immutable());
-                }
+                foundDoors.add(lower.immutable());
             }
         }
         if (foundDoors.isEmpty()) return;

@@ -1,7 +1,6 @@
 package me.thedivazo.zombiecouriers.mixin;
 
 import net.minecraft.entity.monster.ZombieEntity;
-import org.apache.logging.log4j.LogManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

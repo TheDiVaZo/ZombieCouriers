@@ -14,7 +14,7 @@ public class FindVillageGoal extends CourierMoveGoal {
     }
 
     public BlockPos calculateTarget() {
-        return BlockPosUtil.getNearbyVillage((ServerWorld) entity.level, entity.blockPosition(), 40);
+        return BlockPosUtil.getNearbyVillage((ServerWorld) entity.level, entity.blockPosition(), 20);
     }
 
     @Override

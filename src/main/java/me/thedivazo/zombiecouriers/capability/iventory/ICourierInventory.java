@@ -1,5 +1,6 @@
 package me.thedivazo.zombiecouriers.capability.iventory;
 
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraftforge.common.util.INBTSerializable;
@@ -12,6 +13,10 @@ public interface ICourierInventory extends INBTSerializable<CompoundNBT> {
 
     ItemStack pollOne();
 
+    Item peekItemOne();
+
     Collection<ItemStack> clearAndGet();
+
+    int getCount();
 
 }

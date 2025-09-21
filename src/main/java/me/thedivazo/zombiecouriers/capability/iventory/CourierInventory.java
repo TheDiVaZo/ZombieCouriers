@@ -1,11 +1,14 @@
 package me.thedivazo.zombiecouriers.capability.iventory;
 
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.items.ItemHandlerHelper;
 
+import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.LinkedList;
@@ -13,7 +16,8 @@ import java.util.LinkedList;
 public class CourierInventory implements ICourierInventory {
     private final static String ITEMS_NBT_KEY = "Items";
 
-    protected Deque<ItemStack> stacks = new LinkedList<>();
+    protected Deque<ItemStack> stacks = new ArrayDeque<>();
+    private int count = 0;
 
     @Override
     public boolean add(ItemStack stack) {
@@ -29,6 +33,7 @@ public class CourierInventory implements ICourierInventory {
         else {
             stacks.addLast(stack.copy());
         }
+        count+= stack.getCount();
 
         return true;
     }
@@ -40,20 +45,36 @@ public class CourierInventory implements ICourierInventory {
             return ItemStack.EMPTY;
         }
 
+        ItemStack removedStack;
+
         if (first.getCount() <= 1) {
-            return stacks.removeFirst();
+            removedStack = stacks.removeFirst();
         }
         else {
             first.shrink(1);
-            return ItemHandlerHelper.copyStackWithSize(first, 1);
+            removedStack = ItemHandlerHelper.copyStackWithSize(first, 1);
         }
+        count--;
+        return removedStack;
+    }
+
+    @Override
+    public Item peekItemOne() {
+        ItemStack first = stacks.peekFirst();
+        return first != null ? first.getItem() : Items.AIR;
     }
 
     @Override
     public Collection<ItemStack> clearAndGet() {
         Collection<ItemStack> items = this.stacks;
         this.stacks = new LinkedList<>();
+        this.count = 0;
         return items;
+    }
+
+    @Override
+    public int getCount() {
+        return stacks.size();
     }
 
     @Override
@@ -76,6 +97,7 @@ public class CourierInventory implements ICourierInventory {
     @Override
     public void deserializeNBT(CompoundNBT nbt) {
         stacks = new LinkedList<>();
+        count = 0;
 
         ListNBT nbtTagList = nbt.getList(ITEMS_NBT_KEY, Constants.NBT.TAG_COMPOUND);
 
@@ -86,6 +108,7 @@ public class CourierInventory implements ICourierInventory {
 
             if (!itemStack.isEmpty()) {
                 stacks.addLast(itemStack);
+                count += itemStack.getCount();
             }
         }
     }

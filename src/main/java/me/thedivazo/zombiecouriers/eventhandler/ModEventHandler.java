@@ -12,6 +12,7 @@ import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.item.*;
 import net.minecraft.pathfinding.GroundPathNavigator;
 import net.minecraft.util.Hand;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -33,12 +34,11 @@ public class ModEventHandler {
         BreakBlockGoal.class
     };
 
-    private final static ItemStack WOOD_HOE = new ItemStack(new HoeItem(ItemTier.WOOD, 1, 1, new Item.Properties()));
     private final static StateMachine.EventAction EQUIP_ITEM_ACTION = (entity, event) -> {
         if (event == Event.DROP_CROP) {
             entity.setItemInHand(Hand.MAIN_HAND, ItemStack.EMPTY);
         }
-        else if (event == Event.DISTRIB_NEXT_DOOR) {
+        else if (event == Event.GO_TO_NEXT_DOOR) {
             Item currentItem = CourierInventoryManager.getCourierInventory(entity)
                     .map(ICourierInventory::peekItemOne)
                     .orElse(Items.AIR);
@@ -47,13 +47,52 @@ public class ModEventHandler {
             }
         }
         else if (event == Event.GO_TO_FARM) {
-            entity.setItemInHand(Hand.MAIN_HAND, WOOD_HOE);
+            entity.setItemInHand(Hand.MAIN_HAND, Items.WOODEN_HOE.getDefaultInstance());
         }
     };
 
     private final static StateMachine.EventAction ANIMATE_ACTION = (entity, event) -> {
         if (event == Event.DROP_CROP || event == Event.FARM_CROP) {
             entity.animateHurt();
+        }
+    };
+
+    private final static StringTextComponent CHANGE_STATE = new StringTextComponent("state has been changed");
+    private final static StringTextComponent FARM_CROP = new StringTextComponent("crop is farmed");
+    private final static StringTextComponent GO_TO_FARM = new StringTextComponent("go to farm");
+    private final static StringTextComponent GO_NEXT_DOOR = new StringTextComponent("go to next door");
+    private final static StringTextComponent DROP_CROP = new StringTextComponent("drop crop");
+    private final static StringTextComponent SEARCH_DOOR = new StringTextComponent("search doors");
+    private final static StringTextComponent SEARCH_FARM = new StringTextComponent("search farm");
+    private final static StringTextComponent GO_TO_VILLAGE = new StringTextComponent("go to village");
+    private final static StringTextComponent SEARCH_VILLAGE = new StringTextComponent("search vallage");
+    private final static StateMachine.EventAction CHANGE_NAME_ACTION = (entity, event) -> {
+        if (event == Event.CHANGE_STATE) {
+            entity.setCustomName(CHANGE_STATE);
+        }
+        else if (event == Event.SEARCH_FARM) {
+            entity.setCustomName(SEARCH_FARM);
+        }
+        else if (event == Event.FARM_CROP) {
+            entity.setCustomName(FARM_CROP);
+        }
+        else if (event == Event.GO_TO_FARM) {
+            entity.setCustomName(GO_TO_FARM);
+        }
+        else if (event == Event.SEARCH_DOOR) {
+            entity.setCustomName(SEARCH_DOOR);
+        }
+        else if (event == Event.GO_TO_VILLAGE) {
+            entity.setCustomName(GO_TO_VILLAGE);
+        }
+        else if (event == Event.SEARCH_VILLAGE) {
+            entity.setCustomName(SEARCH_VILLAGE);
+        }
+        else if (event == Event.GO_TO_NEXT_DOOR) {
+            entity.setCustomName(GO_NEXT_DOOR);
+        }
+        else if (event == Event.DROP_CROP) {
+            entity.setCustomName(DROP_CROP);
         }
     };
 
@@ -64,7 +103,7 @@ public class ModEventHandler {
         removeGoals(zombie.goalSelector);
         removeGoals(zombie.targetSelector);
 
-        StateMachine stateMachine = new StateMachine(zombie, EQUIP_ITEM_ACTION, ANIMATE_ACTION);
+        StateMachine stateMachine = new StateMachine(zombie, EQUIP_ITEM_ACTION, ANIMATE_ACTION, CHANGE_NAME_ACTION);
 
         zombie.goalSelector.addGoal(0, new OpenDoorForeverGoal(zombie, false));
         zombie.goalSelector.addGoal(1, new FirstStateSetGoal(zombie, stateMachine));
@@ -75,6 +114,7 @@ public class ModEventHandler {
         ((GroundPathNavigator) zombie.getNavigation()).setCanOpenDoors(true);
 
         zombie.setAggressive(false);
+        zombie.setCustomNameVisible(true);
         zombie.clearFire();
         zombie.setRemainingFireTicks(0);
         //zombie.setCanBreakDoors(true);

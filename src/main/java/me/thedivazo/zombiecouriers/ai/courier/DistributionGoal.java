@@ -3,6 +3,7 @@ package me.thedivazo.zombiecouriers.ai.courier;
 import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
 import me.thedivazo.zombiecouriers.capability.iventory.ICourierInventory;
+import me.thedivazo.zombiecouriers.capability.state.Event;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.DoorBlock;
@@ -46,6 +47,7 @@ public class DistributionGoal extends CourierMoveGoal {
         dropItemEntity.setNoPickUpDelay();
         dropItemEntity.setDeltaMovement(Vector3d.ZERO);
         entity.level.addFreshEntity(dropItemEntity);
+        stateMachine.sendEvent(Event.DROP_CROP);
 
         setTarget(pollNearestUnvisitedDoor());
         if (dropItemStack.isEmpty()) {
@@ -77,7 +79,14 @@ public class DistributionGoal extends CourierMoveGoal {
             refillQueue();
             setTarget(nexts.poll());
         }
-        return super.recalculatePath();
+        boolean pathIsRecalculated = super.recalculatePath();
+        if (pathIsRecalculated) {
+            stateMachine.sendEvent(Event.GO_TO_NEXT_DOOR);
+        }
+        else {
+            stateMachine.sendEvent(Event.SEARCH_DOOR);
+        }
+        return pathIsRecalculated;
     }
 
     @Override
@@ -92,6 +101,7 @@ public class DistributionGoal extends CourierMoveGoal {
 
     public void nextStage() {
         stateMachine.setState(State.FARM_GARDEN_BED);
+        stateMachine.sendEvent(Event.CHANGE_STATE);
     }
 
     public void refillQueue() {

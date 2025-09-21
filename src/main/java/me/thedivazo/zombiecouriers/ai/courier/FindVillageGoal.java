@@ -1,6 +1,7 @@
 package me.thedivazo.zombiecouriers.ai.courier;
 
 import me.thedivazo.zombiecouriers.ai.StateMachine;
+import me.thedivazo.zombiecouriers.capability.state.Event;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.util.BlockPosUtil;
 import net.minecraft.entity.CreatureEntity;
@@ -19,6 +20,7 @@ public class FindVillageGoal extends CourierMoveGoal {
     @Override
     public void arrived() {
         stateMachine.setState(State.FARM_GARDEN_BED);
+        stateMachine.sendEvent(Event.CHANGE_STATE);
     }
 
     @Override
@@ -33,6 +35,16 @@ public class FindVillageGoal extends CourierMoveGoal {
 
     @Override
     public void start() {
+        stateMachine.sendEvent(Event.SEARCH_VILLAGE);
         setTarget(calculateTarget());
+    }
+
+    @Override
+    public boolean tryRecalculatePath() {
+        boolean isRecalculated = super.tryRecalculatePath();
+        if (isRecalculated) {
+            stateMachine.sendEvent(Event.GO_TO_VILLAGE);
+        }
+        return isRecalculated;
     }
 }

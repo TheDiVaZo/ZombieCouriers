@@ -2,6 +2,7 @@ package me.thedivazo.zombiecouriers.ai.courier;
 
 import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
+import me.thedivazo.zombiecouriers.capability.state.Event;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.util.BlockPosUtil;
 import net.minecraft.block.BlockState;
@@ -86,6 +87,7 @@ public class FarmGardenBedGoal extends CourierMoveGoal {
 
     @Override
     public void start() {
+        stateMachine.sendEvent(Event.GO_TO_FARM);
         findGardenBed();
     }
 
@@ -111,6 +113,7 @@ public class FarmGardenBedGoal extends CourierMoveGoal {
             });
 
             entity.level.destroyBlock(getTarget(), false, entity);
+            stateMachine.sendEvent(Event.FARM_CROP);
             hasFermed = true;
         }
         setTarget(crops.poll());
@@ -125,7 +128,14 @@ public class FarmGardenBedGoal extends CourierMoveGoal {
         if (getTarget() == null) {
             findGardenBed();
         }
-        return super.recalculatePath();
+        boolean pathIsRecalculated = super.recalculatePath();
+        if (pathIsRecalculated) {
+            stateMachine.sendEvent(Event.GO_TO_FARM);
+        }
+        else {
+            stateMachine.sendEvent(Event.SEARCH_FARM);
+        }
+        return pathIsRecalculated;
     }
 
     @Override
@@ -140,5 +150,6 @@ public class FarmGardenBedGoal extends CourierMoveGoal {
 
     public void nextStage() {
         stateMachine.setState(State.DISTRIBUTION);
+        stateMachine.sendEvent(Event.CHANGE_STATE);
     }
 }

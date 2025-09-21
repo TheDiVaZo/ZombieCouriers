@@ -24,8 +24,8 @@ import java.util.stream.Collectors;
 
 public class DistributionGoal extends CourierMoveGoal {
 
-    private final int homeScanRadius = 100;
-    private final int doorScanRadius = 10;
+    private final int homeScanRadius = 120;
+    private final int doorScanRadius = 7;
 
     private final Deque<BlockPos> nexts = new ArrayDeque<>();
     private final Set<BlockPos> visited = new HashSet<>();
@@ -111,7 +111,7 @@ public class DistributionGoal extends CourierMoveGoal {
         Iterable<BlockPos> homes = poi.getInRange(
                 target ->
                         target == PointOfInterestType.HOME ||
-                        target == PointOfInterestType.ALL_JOBS ||
+                        PointOfInterestType.ALL_JOBS.test(target) ||
                         target == PointOfInterestType.MEETING,
                 entity.blockPosition(),
                 homeScanRadius,

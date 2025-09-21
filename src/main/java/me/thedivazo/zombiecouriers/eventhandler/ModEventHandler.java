@@ -1,9 +1,17 @@
 package me.thedivazo.zombiecouriers.eventhandler;
 
 import me.thedivazo.zombiecouriers.ZombieCouriers;
-import me.thedivazo.zombiecouriers.ai.FindVillageGoal;
+import me.thedivazo.zombiecouriers.ai.OpenDoorForeverGoal;
+import me.thedivazo.zombiecouriers.ai.StateMachine;
+import me.thedivazo.zombiecouriers.ai.courier.*;
+import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
+import me.thedivazo.zombiecouriers.capability.iventory.ICourierInventory;
+import me.thedivazo.zombiecouriers.capability.state.Event;
 import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.monster.ZombieEntity;
+import net.minecraft.item.*;
+import net.minecraft.pathfinding.GroundPathNavigator;
+import net.minecraft.util.Hand;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -20,21 +28,51 @@ public class ModEventHandler {
 
     private static final Class<? extends Goal>[] REMOVE_GOALS = new Class[]{
         ZombieAttackGoal.class,
-        MoveThroughVillageGoal.class,
         HurtByTargetGoal.class,
         NearestAttackableTargetGoal.class,
         BreakBlockGoal.class
+    };
+
+    private final static ItemStack WOOD_HOE = new ItemStack(new HoeItem(ItemTier.WOOD, 1, 1, new Item.Properties()));
+    private final static StateMachine.EventAction EQUIP_ITEM_ACTION = (entity, event) -> {
+        if (event == Event.DROP_CROP) {
+            entity.setItemInHand(Hand.MAIN_HAND, ItemStack.EMPTY);
+        }
+        else if (event == Event.DISTRIB_NEXT_DOOR) {
+            Item currentItem = CourierInventoryManager.getCourierInventory(entity)
+                    .map(ICourierInventory::peekItemOne)
+                    .orElse(Items.AIR);
+            if (currentItem != Items.AIR) {
+                entity.setItemInHand(Hand.MAIN_HAND, currentItem.getDefaultInstance());
+            }
+        }
+        else if (event == Event.GO_TO_FARM) {
+            entity.setItemInHand(Hand.MAIN_HAND, WOOD_HOE);
+        }
+    };
+
+    private final static StateMachine.EventAction ANIMATE_ACTION = (entity, event) -> {
+        if (event == Event.DROP_CROP || event == Event.FARM_CROP) {
+            entity.animateHurt();
+        }
     };
 
     @SubscribeEvent
     public void replaceZombieAI(EntityJoinWorldEvent event) throws IllegalAccessException {
         if (event.getEntity().level.isClientSide || !(event.getEntity() instanceof ZombieEntity) ) return;
         ZombieEntity zombie = (ZombieEntity) event.getEntity();
-
         removeGoals(zombie.goalSelector);
         removeGoals(zombie.targetSelector);
 
-        zombie.goalSelector.addGoal(0, new FindVillageGoal(zombie));
+        StateMachine stateMachine = new StateMachine(zombie, EQUIP_ITEM_ACTION, ANIMATE_ACTION);
+
+        zombie.goalSelector.addGoal(0, new OpenDoorForeverGoal(zombie, false));
+        zombie.goalSelector.addGoal(1, new FirstStateSetGoal(zombie, stateMachine));
+        zombie.goalSelector.addGoal(2, new FindVillageGoal(zombie, stateMachine));
+        zombie.goalSelector.addGoal(2, new FarmGardenBedGoal(zombie, stateMachine));
+        zombie.goalSelector.addGoal(2, new DistributionGoal(zombie, stateMachine));
+
+        ((GroundPathNavigator) zombie.getNavigation()).setCanOpenDoors(true);
 
         zombie.setAggressive(false);
         zombie.clearFire();

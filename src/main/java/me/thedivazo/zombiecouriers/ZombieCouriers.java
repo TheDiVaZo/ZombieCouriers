@@ -2,6 +2,7 @@ package me.thedivazo.zombiecouriers;
 
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
 import me.thedivazo.zombiecouriers.capability.state.StateContainerManager;
+import me.thedivazo.zombiecouriers.capability.village.AttachedVillageManager;
 import me.thedivazo.zombiecouriers.eventhandler.ForgeEventHandler;
 import me.thedivazo.zombiecouriers.eventhandler.ModEventHandler;
 import net.minecraft.block.Block;
@@ -30,6 +31,7 @@ public class ZombieCouriers
     {
         CourierInventoryManager.registerCapabilities();
         StateContainerManager.registerCapabilities();
+        AttachedVillageManager.registerCapabilities();
 
         MinecraftForge.EVENT_BUS.register(new ModEventHandler());
         MinecraftForge.EVENT_BUS.register(new ForgeEventHandler());

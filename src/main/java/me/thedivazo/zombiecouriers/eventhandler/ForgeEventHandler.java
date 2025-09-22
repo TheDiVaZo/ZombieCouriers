@@ -3,6 +3,7 @@ package me.thedivazo.zombiecouriers.eventhandler;
 import me.thedivazo.zombiecouriers.ZombieCouriers;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
 import me.thedivazo.zombiecouriers.capability.state.StateContainerManager;
+import me.thedivazo.zombiecouriers.capability.village.AttachedVillageManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.item.ItemEntity;
@@ -23,6 +24,7 @@ public class ForgeEventHandler {
         if (attachCapabilitiesEvent.getObject() instanceof ZombieEntity) {
             CourierInventoryManager.onEntityAttachCapabilities(attachCapabilitiesEvent);
             StateContainerManager.onEntityAttachCapabilities(attachCapabilitiesEvent);
+            AttachedVillageManager.onEntityAttachCapabilities(attachCapabilitiesEvent);
         }
     }
 

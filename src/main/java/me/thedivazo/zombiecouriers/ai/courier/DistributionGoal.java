@@ -3,8 +3,10 @@ package me.thedivazo.zombiecouriers.ai.courier;
 import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
 import me.thedivazo.zombiecouriers.capability.iventory.ICourierInventory;
-import me.thedivazo.zombiecouriers.capability.state.Event;
+import me.thedivazo.zombiecouriers.ai.Event;
 import me.thedivazo.zombiecouriers.capability.state.State;
+import me.thedivazo.zombiecouriers.capability.village.AttachedVillageManager;
+import me.thedivazo.zombiecouriers.capability.village.IAttachedVillageContainer;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.DoorBlock;
 import net.minecraft.entity.CreatureEntity;
@@ -18,24 +20,45 @@ import net.minecraft.village.PointOfInterestManager;
 import net.minecraft.village.PointOfInterestType;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class DistributionGoal extends CourierMoveGoal {
 
-    private final int homeScanRadius = 120;
+    private final int homeScanRadius = 110;
     private final int doorScanRadius = 7;
 
-    private final Deque<BlockPos> nexts = new ArrayDeque<>();
+    private final Deque<BlockPos> cacheActiveDoors = new ArrayDeque<>();
 
     public DistributionGoal(CreatureEntity entity, StateMachine stateMachine) {
-        super(entity, stateMachine, State.DISTRIBUTION, 0.8d, 1d);
+        super(entity, stateMachine, State.DISTRIBUTION, 0.8d, 1.25d);
+    }
+
+    private void setActiveDoors(Deque<BlockPos> nextDoors) {
+        AttachedVillageManager
+                .getAttachedVillage(entity)
+                .ifPresent(village -> village.setActiveDoors(nextDoors));
+    }
+
+    private Deque<BlockPos> getActiveDoors() {
+        Deque<BlockPos> activeDoors = AttachedVillageManager
+                .getAttachedVillage(entity)
+                .map(IAttachedVillageContainer::getActiveDoors)
+                .orElse(null);
+        if (activeDoors == null) {
+            setActiveDoors(cacheActiveDoors);
+            activeDoors = cacheActiveDoors;
+        }
+
+        return activeDoors;
     }
 
     @Override
     public void arrived() {
         BlockPos currentDoor = getTarget();
+
         ItemStack dropItemStack = CourierInventoryManager
                 .getCourierInventory(entity)
                 .map(ICourierInventory::pollOne)
@@ -58,15 +81,19 @@ public class DistributionGoal extends CourierMoveGoal {
     }
 
     private BlockPos pollNearestUnvisitedDoor() {
-        if (nexts.isEmpty()) return null;
-        return nexts.poll();
+        getActiveDoors().poll();
+        if (getActiveDoors().isEmpty()) return null;
+        return getActiveDoors().peek();
     }
 
     @Override
     public boolean recalculatePath() {
-        if (nexts.isEmpty()) {
+        if (getTarget() == null && !getActiveDoors().isEmpty()) {
+            setTarget(getActiveDoors().peek());
+        }
+        if (getActiveDoors().isEmpty()) {
             refillQueue();
-            setTarget(nexts.poll());
+            setTarget(pollNearestUnvisitedDoor());
         }
         boolean pathIsRecalculated = super.recalculatePath();
         if (pathIsRecalculated) {
@@ -85,7 +112,7 @@ public class DistributionGoal extends CourierMoveGoal {
 
     @Override
     protected boolean onContinueToUse() {
-        return !nexts.isEmpty();
+        return !getActiveDoors().isEmpty();
     }
 
     public void nextStage() {
@@ -97,12 +124,15 @@ public class DistributionGoal extends CourierMoveGoal {
         ServerWorld serverWorld = (ServerWorld) entity.level;
         PointOfInterestManager poi = serverWorld.getPoiManager();
 
-        Iterable<BlockPos> homes = poi.getInRange(
+        Set<BlockPos> homes = poi.getInRange(
                 target ->
                         target == PointOfInterestType.HOME ||
                         PointOfInterestType.ALL_JOBS.test(target) ||
-                        target == PointOfInterestType.MEETING,
-                entity.blockPosition(),
+                        target == PointOfInterestType.MEETING ||
+                        target == PointOfInterestType.UNEMPLOYED,
+                AttachedVillageManager.getAttachedVillage(entity)
+                                .map(IAttachedVillageContainer::getVillageCenter)
+                                .orElse(entity.blockPosition()),
                 homeScanRadius,
                 PointOfInterestManager.Status.ANY
         ).map(PointOfInterest::getPos).collect(Collectors.toSet());
@@ -117,12 +147,10 @@ public class DistributionGoal extends CourierMoveGoal {
         }
         if (foundDoors.isEmpty()) return;
 
-        BlockPos start = (getTarget() != null && foundDoors.contains(getTarget()))
-                ? getTarget()
-                : entity.blockPosition();
+        BlockPos start = entity.blockPosition();
 
         List<BlockPos> sorted = sortByGreedyPath(foundDoors, start);
-        nexts.addAll(sorted);
+        getActiveDoors().addAll(sorted);
     }
 
     private BlockPos ensureLowerHalf(World world, BlockPos pos) {
@@ -135,32 +163,26 @@ public class DistributionGoal extends CourierMoveGoal {
         return pos;
     }
 
-    private static BlockPos findNearestDoorAround(World world, BlockPos bedPos, int radius) {
+    private static BlockPos findNearestDoorAround(ServerWorld world, BlockPos center, int radius) {
         BlockPos bestDoor = null;
         int bestDY = Integer.MAX_VALUE;
-        double bestDistSqr = -1.0;
+        double bestDistSqr = Double.POSITIVE_INFINITY;
 
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dy = -radius; dy <= radius; dy++) {
                 for (int dz = -radius; dz <= radius; dz++) {
-                    BlockPos blockPos = bedPos.offset(dx, dy, dz);
-                    BlockState blockState = world.getBlockState(blockPos);
-                    if (!(blockState.getBlock() instanceof DoorBlock)) continue;
+                    BlockPos p = center.offset(dx, dy, dz);
+                    BlockState state = world.getBlockState(p);
+                    if (!(state.getBlock() instanceof DoorBlock)) continue;
 
-                    BlockPos lower = (blockState.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER) ? blockPos.below() : blockPos;
-                    BlockState lowerState = world.getBlockState(lower);
-                    if (!(lowerState.getBlock() instanceof DoorBlock)) continue;
+                    if (state.getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER) continue;
 
-                    int dyAbs = Math.abs(lower.getY() - bedPos.getY());
+                    int dyAbs = Math.abs(p.getY() - center.getY());
+                    double distSqr = p.distSqr(center);
 
-                    double distSqr = lower.distSqr(bedPos);
-
-                    boolean better =
-                            (dyAbs < bestDY) ||
-                                    (dyAbs == bestDY && distSqr > bestDistSqr);
-
+                    boolean better = (dyAbs < bestDY) || (dyAbs == bestDY && distSqr < bestDistSqr);
                     if (better) {
-                        bestDoor = lower.immutable();
+                        bestDoor = p.immutable();
                         bestDY = dyAbs;
                         bestDistSqr = distSqr;
                     }
@@ -195,5 +217,14 @@ public class DistributionGoal extends CourierMoveGoal {
             result.add(pivot);
         }
         return result;
+    }
+
+    @Override
+    public boolean moveToTarget() {
+        if (getTarget() == null) return false;
+        return entity.getNavigation().moveTo(
+                entity.getNavigation().createPath(getTarget(), 2),
+                1.0D
+        );
     }
 }

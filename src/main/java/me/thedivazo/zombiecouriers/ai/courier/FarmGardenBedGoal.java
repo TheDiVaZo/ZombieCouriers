@@ -2,7 +2,7 @@ package me.thedivazo.zombiecouriers.ai.courier;
 
 import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
-import me.thedivazo.zombiecouriers.capability.state.Event;
+import me.thedivazo.zombiecouriers.ai.Event;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.util.BlockPosUtil;
 import net.minecraft.block.BlockState;
@@ -28,7 +28,7 @@ public class FarmGardenBedGoal extends CourierMoveGoal {
     private boolean hasFermed = false;
 
     public FarmGardenBedGoal(CreatureEntity entity, StateMachine stateMachine) {
-        super(entity, stateMachine, State.FARM_GARDEN_BED, 1.5d, 1d);
+        super(entity, stateMachine, State.FARM_GARDEN_BED, 0.99d, 1.25d);
         setFlags(EnumSet.of(Flag.MOVE, Flag.JUMP));
     }
 

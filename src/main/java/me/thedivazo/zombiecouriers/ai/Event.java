@@ -1,4 +1,4 @@
-package me.thedivazo.zombiecouriers.capability.state;
+package me.thedivazo.zombiecouriers.ai;
 
 public enum Event {
     CHANGE_STATE,

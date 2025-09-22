@@ -9,7 +9,7 @@ import me.thedivazo.zombiecouriers.ai.courier.FindVillageGoal;
 import me.thedivazo.zombiecouriers.ai.courier.FirstStateSetGoal;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
 import me.thedivazo.zombiecouriers.capability.iventory.ICourierInventory;
-import me.thedivazo.zombiecouriers.capability.state.Event;
+import me.thedivazo.zombiecouriers.ai.Event;
 import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.item.Item;

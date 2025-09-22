@@ -1,6 +1,5 @@
 package me.thedivazo.zombiecouriers.ai;
 
-import me.thedivazo.zombiecouriers.capability.state.Event;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.capability.state.StateContainerManager;
 import net.minecraft.entity.MobEntity;

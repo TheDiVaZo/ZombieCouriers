@@ -54,7 +54,7 @@ public abstract class CourierMoveGoal extends CourierStateGoal {
         if (target == null) return false;
         return entity.getNavigation().moveTo(
                 target.getX() + 0.5D,
-                target.getY() + 0.5D + 0.5D,
+                target.getY() + 1.0D,
                 target.getZ() + 0.5D,
                 1.0D
         );

@@ -1,6 +1,7 @@
 package me.thedivazo.zombiecouriers.eventhandler;
 
 import me.thedivazo.zombiecouriers.ZombieCouriers;
+import me.thedivazo.zombiecouriers.ai.LeavesBreakGoal;
 import me.thedivazo.zombiecouriers.ai.OpenDoorForeverGoal;
 import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.ai.courier.DistributionGoal;
@@ -16,6 +17,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.pathfinding.GroundPathNavigator;
+import net.minecraft.pathfinding.PathNodeType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -111,13 +113,18 @@ public class ModEventHandler {
         StateMachine stateMachine = new StateMachine(zombie, EQUIP_ITEM_ACTION, ANIMATE_ACTION, CHANGE_NAME_ACTION);
 
         zombie.goalSelector.addGoal(0, new OpenDoorForeverGoal(zombie, false));
+        zombie.goalSelector.addGoal(0, new LeavesBreakGoal(zombie));
+
         zombie.goalSelector.addGoal(1, new FirstStateSetGoal(zombie, stateMachine));
         zombie.goalSelector.addGoal(2, new FindVillageGoal(zombie, stateMachine));
         zombie.goalSelector.addGoal(2, new FarmGardenBedGoal(zombie, stateMachine));
         zombie.goalSelector.addGoal(2, new DistributionGoal(zombie, stateMachine));
 
         ((GroundPathNavigator) zombie.getNavigation()).setCanOpenDoors(true);
+        zombie.setPathfindingMalus(PathNodeType.DOOR_WOOD_CLOSED, 0.0F);
+        zombie.setPathfindingMalus(PathNodeType.LEAVES, 0.0F);
 
+        zombie.maxUpStep = 1.1F;
         zombie.setAggressive(false);
         zombie.setCustomNameVisible(true);
         zombie.clearFire();

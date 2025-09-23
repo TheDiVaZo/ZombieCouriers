@@ -4,17 +4,14 @@ import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.ai.goal.InteractDoorGoal;
 
 public class OpenDoorForeverGoal extends InteractDoorGoal {
-    private final boolean closeDoor;
     private int forgetTime;
 
-    public OpenDoorForeverGoal(MobEntity p_i1644_1_, boolean p_i1644_2_) {
-        super(p_i1644_1_);
-        this.mob = p_i1644_1_;
-        this.closeDoor = p_i1644_2_;
+    public OpenDoorForeverGoal(MobEntity entity) {
+        super(entity);
     }
 
     public boolean canContinueToUse() {
-        return this.closeDoor && this.forgetTime > 0 && super.canContinueToUse();
+        return this.forgetTime > 0 && super.canContinueToUse();
     }
 
     public void start() {

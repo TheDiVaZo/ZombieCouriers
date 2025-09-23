@@ -112,7 +112,7 @@ public class ModEventHandler {
 
         StateMachine stateMachine = new StateMachine(zombie, EQUIP_ITEM_ACTION, ANIMATE_ACTION, CHANGE_NAME_ACTION);
 
-        zombie.goalSelector.addGoal(0, new OpenDoorForeverGoal(zombie, false));
+        zombie.goalSelector.addGoal(0, new OpenDoorForeverGoal(zombie));
         zombie.goalSelector.addGoal(0, new LeavesBreakGoal(zombie));
 
         zombie.goalSelector.addGoal(1, new FirstStateSetGoal(zombie, stateMachine));

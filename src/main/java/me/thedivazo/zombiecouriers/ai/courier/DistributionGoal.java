@@ -1,5 +1,6 @@
 package me.thedivazo.zombiecouriers.ai.courier;
 
+import lombok.Getter;
 import me.thedivazo.zombiecouriers.ai.Event;
 import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
@@ -7,6 +8,8 @@ import me.thedivazo.zombiecouriers.capability.iventory.ICourierInventory;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.capability.village.AttachedVillageManager;
 import me.thedivazo.zombiecouriers.capability.village.IAttachedVillageContainer;
+import me.thedivazo.zombiecouriers.util.HomeSort;
+import me.thedivazo.zombiecouriers.util.Pair;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.DoorBlock;
 import net.minecraft.entity.CreatureEntity;
@@ -18,7 +21,6 @@ import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.village.PointOfInterest;
 import net.minecraft.village.PointOfInterestManager;
 import net.minecraft.village.PointOfInterestType;
-import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 
 import java.util.*;
@@ -29,29 +31,60 @@ public class DistributionGoal extends CourierMoveGoal {
     private final int homeScanRadius = 110;
     private final int doorScanRadius = 7;
 
-    private final Deque<BlockPos> cacheActiveDoors = new ArrayDeque<>();
+    private final Deque<Pair<BlockPos, Set<BlockPos>>> cacheHomeBlocksAndDoors = new ArrayDeque<>();
+
+    @Getter
+    private Pair<BlockPos, Set<BlockPos>> homeTarget = null;
 
     public DistributionGoal(CreatureEntity entity, StateMachine stateMachine) {
         super(entity, stateMachine, State.DISTRIBUTION, 0.8d, 1.25d);
     }
 
-    private void setActiveDoors(Deque<BlockPos> nextDoors) {
+    private void setHomeBlocksAndDoors(Deque<Pair<BlockPos, Set<BlockPos>>> nextHomeBlocksAndDoors) {
         AttachedVillageManager
                 .getAttachedVillage(entity)
-                .ifPresent(village -> village.setActiveDoors(nextDoors));
+                .ifPresent(village -> village.setHomeBlocksAndDoors(nextHomeBlocksAndDoors));
     }
 
-    private Deque<BlockPos> getActiveDoors() {
-        Deque<BlockPos> activeDoors = AttachedVillageManager
+    private Deque<Pair<BlockPos, Set<BlockPos>>> getHomesAndDoors() {
+        Deque<Pair<BlockPos, Set<BlockPos>>> homeBlocksAndDoors = AttachedVillageManager
                 .getAttachedVillage(entity)
-                .map(IAttachedVillageContainer::getActiveDoors)
+                .map(IAttachedVillageContainer::getHomeBlocksAndDoors)
                 .orElse(null);
-        if (activeDoors == null) {
-            setActiveDoors(cacheActiveDoors);
-            activeDoors = cacheActiveDoors;
+        if (homeBlocksAndDoors == null) {
+            setHomeBlocksAndDoors(cacheHomeBlocksAndDoors);
+            homeBlocksAndDoors = cacheHomeBlocksAndDoors;
         }
 
-        return activeDoors;
+        return homeBlocksAndDoors;
+    }
+
+    public void setHomeTarget(Pair<BlockPos, Set<BlockPos>> homeTarget) {
+        BlockPos target;
+        if (homeTarget == null) {
+            target = null;
+        }
+        else {
+            target = homeTarget.getSecond()
+                    .stream()
+                    .findAny()
+                    .orElse(homeTarget.getFirst());
+        }
+        super.setTarget(target);
+        this.homeTarget = homeTarget;
+    }
+
+    @Override
+    public boolean isCloserThan() {
+        Pair<BlockPos, Set<BlockPos>> homeTarget = getHomeTarget();
+        if (homeTarget == null) return false;
+        for (BlockPos door : homeTarget.getSecond()) {
+            if (door.closerThan(entity.position(), this.acceptedDistance)) {
+                setTarget(door);
+                return true;
+            }
+        }
+        return super.isCloserThan();
     }
 
     @Override
@@ -60,7 +93,8 @@ public class DistributionGoal extends CourierMoveGoal {
 
         entity.level.addFreshEntity(dropItemEntity);
 
-        setTarget(pollNearestUnvisitedDoor());
+        getHomesAndDoors().remove();
+        setHomeTarget(getHomesAndDoors().peek());
 
         if (isEmptyInventory()) {
             nextStage();
@@ -87,21 +121,14 @@ public class DistributionGoal extends CourierMoveGoal {
         return dropItemEntity;
     }
 
-    private BlockPos pollNearestUnvisitedDoor() {
-        getActiveDoors().poll();
-        if (getActiveDoors().isEmpty()) return null;
-        return getActiveDoors().peek();
-    }
-
     @Override
     public boolean recalculatePath() {
-        if (getTarget() == null && !getActiveDoors().isEmpty()) {
-            setTarget(getActiveDoors().peek());
-        }
-
-        if (getActiveDoors().isEmpty()) {
+        if (getHomesAndDoors().isEmpty()) {
             refillQueue();
-            setTarget(pollNearestUnvisitedDoor());
+            setHomeTarget(getHomesAndDoors().peek());
+        }
+        else if (getTarget() == null) {
+            setHomeTarget(getHomesAndDoors().peek());
         }
 
         boolean pathIsRecalculated = super.recalculatePath();
@@ -122,7 +149,7 @@ public class DistributionGoal extends CourierMoveGoal {
 
     @Override
     protected boolean onContinueToUse() {
-        return !getActiveDoors().isEmpty();
+        return !getHomesAndDoors().isEmpty();
     }
 
     public void nextStage() {
@@ -133,14 +160,19 @@ public class DistributionGoal extends CourierMoveGoal {
     public void refillQueue() {
         Set<BlockPos> bedsAndCraftersPos = getAllBedsAndCrafters();
 
-        Set<BlockPos> foundDoors = filteringByHomes(bedsAndCraftersPos);
-        if (foundDoors.isEmpty()) return;
+        List<Pair<BlockPos, Set<BlockPos>>> foundHomes = filteringByHomesAndGet(bedsAndCraftersPos);
+        if (foundHomes.isEmpty()) return;
 
-        BlockPos start = entity.blockPosition();
+        Collection<Pair<BlockPos, Set<BlockPos>>> sorted = HomeSort.sortByNearest(foundHomes, getStartPosition());
 
-        List<BlockPos> sorted = sortByGreedyPath(foundDoors, start);
+        getHomesAndDoors().addAll(sorted);
+    }
 
-        getActiveDoors().addAll(sorted);
+    private BlockPos getStartPosition() {
+        return AttachedVillageManager.getAttachedVillage(entity)
+                .filter(IAttachedVillageContainer::isSetVillageCenter)
+                .map(IAttachedVillageContainer::getVillageCenter)
+                .orElse(entity.blockPosition());
     }
 
     private Set<BlockPos> getAllBedsAndCrafters() {
@@ -153,7 +185,8 @@ public class DistributionGoal extends CourierMoveGoal {
                         target == PointOfInterestType.HOME ||
                                 PointOfInterestType.ALL_JOBS.test(target) ||
                                 target == PointOfInterestType.MEETING ||
-                                target == PointOfInterestType.UNEMPLOYED,
+                                target == PointOfInterestType.UNEMPLOYED ||
+                                target == PointOfInterestType.MASON,
                 AttachedVillageManager.getAttachedVillage(entity)
                         .map(IAttachedVillageContainer::getVillageCenter)
                         .orElse(entity.blockPosition()),
@@ -162,35 +195,23 @@ public class DistributionGoal extends CourierMoveGoal {
         ).map(PointOfInterest::getPos).collect(Collectors.toSet());
     }
 
-    private Set<BlockPos> filteringByHomes(Set<BlockPos> bedsAndCrafters) {
+    private List<Pair<BlockPos, Set<BlockPos>>> filteringByHomesAndGet(Set<BlockPos> bedsAndCrafters) {
         ServerWorld serverWorld = (ServerWorld) entity.level;
 
-        Set<BlockPos> foundDoors = new HashSet<>();
+        List<Pair<BlockPos, Set<BlockPos>>> result = new ArrayList<>();
+
         for (BlockPos block : bedsAndCrafters) {
-            BlockPos door = findNearestDoorAround(serverWorld, block, doorScanRadius);
-            if (door != null) {
-                BlockPos lower = ensureLowerHalf(serverWorld, door);
-                foundDoors.add(lower.immutable());
+            Set<BlockPos> doors = findNearestDoorAround(serverWorld, block, doorScanRadius);
+            if (!doors.isEmpty()) {
+                result.add(new Pair<>(block, doors));
             }
         }
 
-        return foundDoors;
+        return result;
     }
 
-    private BlockPos ensureLowerHalf(World world, BlockPos blockPos) {
-        BlockState blockState = world.getBlockState(blockPos);
-        if (blockState.getBlock() instanceof DoorBlock) {
-            if (blockState.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER) {
-                return blockPos.below();
-            }
-        }
-        return blockPos;
-    }
-
-    private static BlockPos findNearestDoorAround(ServerWorld world, BlockPos center, int radius) {
-        BlockPos bestDoor = null;
-        int bestDY = Integer.MAX_VALUE;
-        double bestDistSqr = Double.POSITIVE_INFINITY;
+    private static Set<BlockPos> findNearestDoorAround(ServerWorld world, BlockPos center, int radius) {
+        Set<BlockPos> result = new HashSet<>();
 
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dy = -radius; dy <= radius; dy++) {
@@ -201,44 +222,9 @@ public class DistributionGoal extends CourierMoveGoal {
 
                     if (state.getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER) continue;
 
-                    int dyAbs = Math.abs(blockPos.getY() - center.getY());
-                    double distSqr = blockPos.distSqr(center);
-
-                    boolean better = (dyAbs < bestDY) || (dyAbs == bestDY && distSqr < bestDistSqr);
-                    if (better) {
-                        bestDoor = blockPos.immutable();
-                        bestDY = dyAbs;
-                        bestDistSqr = distSqr;
-                    }
+                    result.add(blockPos);
                 }
             }
-        }
-        return bestDoor;
-    }
-
-    private static List<BlockPos> sortByGreedyPath(Collection<BlockPos> doors, BlockPos start) {
-        List<BlockPos> remaining = new ArrayList<>(doors);
-        List<BlockPos> result = new ArrayList<>(remaining.size());
-
-        remaining.sort(Comparator.comparingDouble(pos -> pos.distSqr(start)));
-        BlockPos pivot = remaining.remove(0);
-        result.add(pivot);
-
-        while (!remaining.isEmpty()) {
-            final BlockPos last = result.get(result.size() - 1);
-            int bestIndex = 0;
-            double best = Double.MAX_VALUE;
-
-            for (int i = 0; i < remaining.size(); i++) {
-                BlockPos blockPos = remaining.get(i);
-                double dist = blockPos.distSqr(last);
-                if (dist < best) {
-                    best = dist;
-                    bestIndex = i;
-                }
-            }
-            pivot = remaining.remove(bestIndex);
-            result.add(pivot);
         }
         return result;
     }

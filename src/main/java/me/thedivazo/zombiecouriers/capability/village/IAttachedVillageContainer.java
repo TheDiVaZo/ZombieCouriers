@@ -5,7 +5,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.common.util.INBTSerializable;
 
 import java.util.Deque;
-import java.util.List;
 
 public interface IAttachedVillageContainer extends INBTSerializable<CompoundNBT> {
     boolean isSetVillageCenter();

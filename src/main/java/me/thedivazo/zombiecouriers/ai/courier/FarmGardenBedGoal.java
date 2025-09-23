@@ -1,8 +1,8 @@
 package me.thedivazo.zombiecouriers.ai.courier;
 
+import me.thedivazo.zombiecouriers.ai.Event;
 import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.capability.iventory.CourierInventoryManager;
-import me.thedivazo.zombiecouriers.ai.Event;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.util.BlockPosUtil;
 import net.minecraft.block.BlockState;
@@ -94,33 +94,44 @@ public class FarmGardenBedGoal extends CourierMoveGoal {
     @Override
     public void arrived() {
         if (getTarget() == null) return;
+
         if (BlockPosUtil.isMaxAgeCrop(entity.level, getTarget())) {
 
-            BlockState state = entity.level.getBlockState(getTarget());
+            List<ItemStack> loot = getLoot();
 
-            List<ItemStack> loot = state.getDrops(
-                    new LootContext.Builder((ServerWorld) entity.level)
-                            .withRandom(entity.getRandom())
-                            .withParameter(LootParameters.TOOL, ItemStack.EMPTY)
-                            .withParameter(LootParameters.THIS_ENTITY, entity)
-                            .withParameter(LootParameters.ORIGIN, Vector3d.ZERO)
-            );
-
-            CourierInventoryManager.getCourierInventory(entity).ifPresent(inventory -> {
-                for (ItemStack itemStack : loot) {
-                    inventory.add(itemStack);
-                }
-            });
+            addLootToInventory(loot);
 
             entity.level.destroyBlock(getTarget(), false, entity);
+
             stateMachine.sendEvent(Event.FARM_CROP);
+
             hasFermed = true;
         }
         setTarget(crops.poll());
+
         if (getTarget() == null && hasFermed) {
             hasFermed = false;
             nextStage();
         }
+    }
+
+    private void addLootToInventory(List<ItemStack> loot) {
+        CourierInventoryManager.getCourierInventory(entity).ifPresent(inventory -> {
+            for (ItemStack item : loot) {
+                inventory.add(item);
+            }
+        });
+    }
+
+    private List<ItemStack> getLoot() {
+        BlockState state = entity.level.getBlockState(getTarget());
+
+        return state.getDrops(
+                new LootContext.Builder((ServerWorld) entity.level)
+                        .withRandom(entity.getRandom())
+                        .withParameter(LootParameters.TOOL, ItemStack.EMPTY)
+                        .withParameter(LootParameters.THIS_ENTITY, entity)
+                        .withParameter(LootParameters.ORIGIN, Vector3d.ZERO));
     }
 
     @Override

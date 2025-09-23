@@ -10,10 +10,10 @@ import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.World;
 
 public class LeavesBreakGoal extends Goal {
-    private static final int LEAF_BREAK_CD = 5;
+    private static final int LEAF_BREAK_COOLDOWN = 5;
 
     private final CreatureEntity entity;
-    private int leafBreakerCooldown = 0;
+    private int leafBreakCurrentCooldown = 0;
 
     public LeavesBreakGoal(CreatureEntity entity) {
         this.entity = entity;
@@ -21,44 +21,42 @@ public class LeavesBreakGoal extends Goal {
 
     @Override
     public void tick() {
-        if (leafBreakerCooldown-- <= 0) {
+        if (leafBreakCurrentCooldown-- <= 0) {
             breakLeaves(entity, 1.5D);
-            leafBreakerCooldown = LEAF_BREAK_CD;
+            leafBreakCurrentCooldown = LEAF_BREAK_COOLDOWN;
         }
     }
 
     @Override
     public boolean canUse() {
-        return leafBreakerCooldown-- <= 0;
+        return leafBreakCurrentCooldown-- <= 0;
     }
 
-    private static void breakLeaves(MobEntity mob, double maxDist) {
-        World world = mob.level;
-        if (world.isClientSide) return;
+    private static void breakLeaves(MobEntity entity, double maxDist) {
+        World world = entity.level;
+        Vector3d dir = entity.getLookAngle().normalize();
+        if (dir.lengthSqr() < 1e-6D) return;
 
-        Vector3d dir = mob.getLookAngle().normalize();
-        if (dir.lengthSqr() < 1e-6) return;
-
-        double h = mob.getBbHeight();
-        double[] yOffsets = { 0.2D, h * 0.5D, Math.max(0.9D, h * 0.9D) };
+        double height = entity.getBbHeight();
+        double[] yOffsets = { 0.2D, height * 0.5D, Math.max(0.9D, height * 0.9D) };
 
         BlockPos lastBroken = null;
         for (double yOff : yOffsets) {
-            Vector3d base = mob.position().add(0.0D, yOff, 0.0D);
+            Vector3d base = entity.position().add(0.0D, yOff, 0.0D);
 
             for (double t = 0.2D; t <= maxDist; t += 0.2D) {
-                BlockPos p = new BlockPos(base.add(dir.scale(t)));
-                if (lastBroken != null && p.equals(lastBroken)) continue;
+                BlockPos blockPos = new BlockPos(base.add(dir.scale(t)));
+                if (blockPos.equals(lastBroken)) continue;
 
-                BlockState st = world.getBlockState(p);
+                BlockState blockState = world.getBlockState(blockPos);
 
-                if (st.getBlock() instanceof LeavesBlock) {
-                    world.destroyBlock(p, false, mob);
-                    lastBroken = p.immutable();
+                if (blockState.getBlock() instanceof LeavesBlock) {
+                    world.destroyBlock(blockPos, false, entity);
+                    lastBroken = blockPos.immutable();
                     break;
                 }
 
-                if (!st.getMaterial().isReplaceable() && !st.getCollisionShape(world, p).isEmpty()) {
+                if (!blockState.getMaterial().isReplaceable() && !blockState.getCollisionShape(world, blockPos).isEmpty()) {
                     break;
                 }
             }

@@ -1,7 +1,7 @@
 package me.thedivazo.zombiecouriers.ai.courier;
 
-import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.ai.Event;
+import me.thedivazo.zombiecouriers.ai.StateMachine;
 import me.thedivazo.zombiecouriers.capability.state.State;
 import me.thedivazo.zombiecouriers.capability.village.AttachedVillageManager;
 import me.thedivazo.zombiecouriers.capability.village.IAttachedVillageContainer;
@@ -16,19 +16,26 @@ public class FindVillageGoal extends CourierMoveGoal {
     }
 
     public BlockPos calculateTarget() {
-        BlockPos villageCenter = AttachedVillageManager
+        BlockPos villageCenter = getSavedVillageCenter();
+        if (villageCenter == null) {
+            villageCenter = BlockPosUtil.getNearbyVillage((ServerWorld) entity.level, entity.blockPosition(), 20);
+            saveVillageCenter(villageCenter);
+        }
+        return villageCenter;
+    }
+
+    private void saveVillageCenter(BlockPos villageCenter) {
+        AttachedVillageManager
+                .getAttachedVillage(entity)
+                .ifPresent(container -> container.setVillageCenter(villageCenter));
+    }
+
+    private BlockPos getSavedVillageCenter() {
+        return AttachedVillageManager
                 .getAttachedVillage(entity)
                 .filter(IAttachedVillageContainer::isSetVillageCenter)
                 .map(IAttachedVillageContainer::getVillageCenter)
                 .orElse(null);
-        if (villageCenter == null) {
-            villageCenter = BlockPosUtil.getNearbyVillage((ServerWorld) entity.level, entity.blockPosition(), 20);
-            BlockPos finalVillageCenter = villageCenter;
-            AttachedVillageManager
-                    .getAttachedVillage(entity)
-                    .ifPresent(container -> container.setVillageCenter(finalVillageCenter));
-        }
-        return villageCenter;
     }
 
     @Override

@@ -11,7 +11,7 @@ import net.minecraft.util.Hand;
 
 public enum Actions {;
     public final static StateMachine.EventAction EQUIP_ITEM_ACTION = (entity, event) -> {
-        if (event == Event.DROP_CROP) {
+        if (event == Event.DROP_CROP || event == Event.SEARCH_FARM) {
             entity.setItemInHand(Hand.MAIN_HAND, ItemStack.EMPTY);
         }
         else if (event == Event.GO_TO_NEXT_DOOR) {
@@ -29,7 +29,9 @@ public enum Actions {;
 
     public final static StateMachine.EventAction ANIMATE_ACTION = (entity, event) -> {
         if (event == Event.DROP_CROP || event == Event.FARM_CROP) {
-            entity.animateHurt();
+            entity.setAggressive(true);
+            entity.swing(Hand.MAIN_HAND);
+            entity.setAggressive(false);
         }
     };
 
